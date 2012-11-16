@@ -23,8 +23,9 @@ func main() {
 		return
 	} 
 
-	command = os.Args[1]
+	command, _ = filepath.Abs(os.Args[1])
 	directory = filepath.Dir(command)
+	directory, _ = filepath.Abs(directory)
 	check_files_for_changes()
 
 	log.Printf("\033[37mMonitoring: %s\033[0m\n", directory)
