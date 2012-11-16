@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	//"fmt"
+	"io"
 )
 
 var (
@@ -15,6 +17,8 @@ var (
 	access_time time.Time
 	highest_modification int64
 	cmd *exec.Cmd
+	stdout io.ReadCloser
+	stderr io.ReadCloser
 )
 
 func main() {
@@ -31,17 +35,12 @@ func main() {
 	log.Printf("\033[37mMonitoring: %s\033[0m\n", directory)
 	c := time.Tick(1 * time.Second)
 
-	cmd = exec.Command(command)
-	cmd.Dir = directory
-	err := cmd.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
+	launch_app()
 
 	for now := range c {
 		if check_files_for_changes() && now.Unix() > 0 {
 
-			log.Printf("\033[1;32mRebuilding application!\033[0m\n")
+			log.Printf("\033[1;32mRebuilding application...\033[0m\n")
 
 			err := cmd.Process.Kill()
 			if err != nil {
@@ -57,21 +56,35 @@ func main() {
 				log.Printf("\033[1;31mError rebuilding application: %s\033[0m\n", errn)
 			}
 			if err_out != nil {
-				log.Printf("\033[1;31m=== Ouput from application ====\n\n%s\n", command_output)
-				log.Printf("=== End of ouput ====\033[0m\n")
+				log.Printf("\033[1;31m=== error ====\n\n%s\n", command_output)
+				log.Printf("==========\033[0m\n")
 			}
 
-			cmd = nil
-			cmd = exec.Command(command)
-			cmd.Dir = directory
-
-			err = cmd.Start()
-			if err != nil {
-				log.Printf("\033[1;31mError starting application: %s\033[0m\n", err)
+			if err_out == nil {
+				launch_app()
 			}
 
 		}
 	}
+}
+
+func launch_app() {
+	cmd = nil
+	cmd = exec.Command(command)
+	cmd.Dir = directory
+
+	stdout, _ = cmd.StdoutPipe()
+	stderr, _ = cmd.StderrPipe()
+
+	err := cmd.Start()
+	if err != nil {
+		log.Printf("\033[1;31mError starting application: %s\033[0m\n", err)
+	}
+
+	log.Printf("\033[1;32mApplication started!\033[0m\n")
+
+	go io.Copy(os.Stdout, stdout)
+	go io.Copy(os.Stderr, stderr) 
 }
 
 func check_files_for_changes() bool {
