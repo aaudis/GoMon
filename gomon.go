@@ -8,6 +8,7 @@ import (
 	"time"
 	//"fmt"
 	"io"
+	"syscall"
 )
 
 var (
@@ -42,7 +43,7 @@ func main() {
 
 			log.Printf("\033[1;32mRebuilding application...\033[0m\n")
 
-			err := cmd.Process.Kill()
+			err := cmd.Process.Signal(syscall.SIGTERM)
 			if err != nil {
 				log.Printf("\033[1;31mError killing running process: %s\033[0m\n", err)
 			}
